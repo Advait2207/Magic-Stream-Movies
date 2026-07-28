@@ -2,8 +2,10 @@ package controllers
 
 import (
 	"context"
+	"errors"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -12,6 +14,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 	"github.com/joho/godotenv"
+	"github.com/tmc/langchaingo/llms/openai"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 )
@@ -120,6 +123,46 @@ func AdminReviewUpdate() gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, gin.H{"error":"Invalid request body"})
 			return
 		}
+
+		sentiment, rankVal, err := GetReviewRanking(req.AdminReview)
+
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error":"Error getting review ranking"})
+			return
+		}
+
+		filter := bson.M{"imdb_id": movieId}
+		
+		update := bson.M{
+			"$set" : bson.M{
+				"admin_review": req.AdminReview,
+				"ranking": bson.M{
+					"ranking_value": rankVal,
+					"ranking_name": sentiment,
+				},
+			},
+		}
+
+		var ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
+		defer cancel()
+
+		result, err := movieCollection.UpdateOne(ctx, filter, update)
+
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error":"Error updating movie"})
+			return
+		}
+
+		if result.MatchedCount == 0 {
+			c.JSON(http.StatusNotFound, gin.H{"error":"Movie not found"})
+			return
+		}
+
+		resp.RankingName = sentiment
+		resp.AdminReview = req.AdminReview
+
+		c.JSON(http.StatusOK, resp)
+		
 	}
 }
 
@@ -145,7 +188,39 @@ func GetReviewRanking(admin_review string) (string, int, error) {
 	if err != nil {
 		log.Println("Warning: .env file not found")
 	}
-	
+
+	OpenAIApiKey := os.Getenv("OPENAI_API_KEY")
+
+	if OpenAIApiKey == "" {
+		return "", 0, errors.New("could not read OPENAI_API_KEY")
+	}
+
+	llm, err := openai.New(openai.WithToken(OpenAIApiKey))
+
+	if err != nil {
+		return "", 0, err
+	}
+
+	base_prompt_template := os.Getenv("BASE_PROMPT_TEMPLATE")
+
+	base_prompt := strings.Replace(base_prompt_template, "{rankings}", sentimentDelimited, 1)
+
+	response, err := llm.Call(context.Background(), base_prompt + admin_review)
+
+	if err != nil {
+		return "", 0, err
+	}
+
+	rankVal := 0
+
+	for _, ranking := range rankings {
+		if ranking.RankingName == response {
+			rankVal = ranking.RankingValue
+			break
+		}
+	}
+
+	return response, rankVal, nil
 }
 
 func GetRankings() ([]models.Ranking, error) {
