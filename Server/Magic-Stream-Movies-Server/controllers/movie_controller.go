@@ -105,11 +105,24 @@ func AddMovie() gin.HandlerFunc {
 }
 
 func AdminReviewUpdate() gin.HandlerFunc {
-	return func (c *gin.Context) {
+	return func(c *gin.Context) {
+
+		role, err := utils.GetRoleFromContext(c)
+
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Role not found in context"})
+			return
+		}
+
+		if role != "ADMIN" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "User must be part of the ADMIN role"})
+			return
+		}
+
 		movieId := c.Param("imdb_id")
 
 		if movieId == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error":"Movie Id required"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Movie Id required"})
 			return
 		}
 
@@ -123,25 +136,25 @@ func AdminReviewUpdate() gin.HandlerFunc {
 		}
 
 		if err := c.ShouldBind(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error":"Invalid request body"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
 			return
 		}
 
 		sentiment, rankVal, err := GetReviewRanking(req.AdminReview)
 
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error":"Error getting review ranking"})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error getting review ranking"})
 			return
 		}
 
 		filter := bson.M{"imdb_id": movieId}
-		
+
 		update := bson.M{
-			"$set" : bson.M{
+			"$set": bson.M{
 				"admin_review": req.AdminReview,
 				"ranking": bson.M{
 					"ranking_value": rankVal,
-					"ranking_name": sentiment,
+					"ranking_name":  sentiment,
 				},
 			},
 		}
@@ -152,12 +165,12 @@ func AdminReviewUpdate() gin.HandlerFunc {
 		result, err := movieCollection.UpdateOne(ctx, filter, update)
 
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error":"Error updating movie"})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error updating movie"})
 			return
 		}
 
 		if result.MatchedCount == 0 {
-			c.JSON(http.StatusNotFound, gin.H{"error":"Movie not found"})
+			c.JSON(http.StatusNotFound, gin.H{"error": "Movie not found"})
 			return
 		}
 
@@ -165,7 +178,7 @@ func AdminReviewUpdate() gin.HandlerFunc {
 		resp.AdminReview = req.AdminReview
 
 		c.JSON(http.StatusOK, resp)
-		
+
 	}
 }
 
@@ -208,7 +221,7 @@ func GetReviewRanking(admin_review string) (string, int, error) {
 
 	base_prompt := strings.Replace(base_prompt_template, "{rankings}", sentimentDelimited, 1)
 
-	response, err := llm.Call(context.Background(), base_prompt + admin_review)
+	response, err := llm.Call(context.Background(), base_prompt+admin_review)
 
 	if err != nil {
 		return "", 0, err
@@ -252,8 +265,8 @@ func GetRecommendedMovies() gin.HandlerFunc {
 		userId, err := utils.GetUserIdFromContext(c)
 
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error":"User Id not found in context"})
-			return 
+			c.JSON(http.StatusBadRequest, gin.H{"error": "User Id not found in context"})
+			return
 		}
 
 		favourite_genres, err := GetUsersFavouriteGenres(userId)
@@ -279,19 +292,19 @@ func GetRecommendedMovies() gin.HandlerFunc {
 
 		findOptions := options.Find()
 
-		findOptions.SetSort(bson.D{{Key: "ranking.ranking_value", Value:1}})
+		findOptions.SetSort(bson.D{{Key: "ranking.ranking_value", Value: 1}})
 
 		findOptions.SetLimit(recommendedMovieLimitVal)
 
-		filter := bson.M{"genre.genre_name": bson.M{"$in":favourite_genres}}
+		filter := bson.M{"genre.genre_name": bson.M{"$in": favourite_genres}}
 
 		var ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
-		defer cancel()	
+		defer cancel()
 
 		cursor, err := movieCollection.Find(ctx, filter, findOptions)
 
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error":"Error fetching recommended movies"})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error fetching recommended movies"})
 			return
 		}
 
@@ -309,13 +322,13 @@ func GetRecommendedMovies() gin.HandlerFunc {
 
 func GetUsersFavouriteGenres(userId string) ([]string, error) {
 	var ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
-	defer cancel()	
+	defer cancel()
 
-	filter := bson.M{"user_id":userId}
+	filter := bson.M{"user_id": userId}
 
-	projection := bson.M {
+	projection := bson.M{
 		"favourite_genres.genre_name": 1,
-		"_id": 0,
+		"_id":                         0,
 	}
 
 	opts := options.FindOne().SetProjection(projection)
@@ -339,7 +352,7 @@ func GetUsersFavouriteGenres(userId string) ([]string, error) {
 	var genreNames []string
 
 	for _, item := range favGenresArray {
-		if genreMap, ok := item.(bson.D); ok{
+		if genreMap, ok := item.(bson.D); ok {
 			for _, elem := range genreMap {
 				if elem.Key == "genre_name" {
 					if name, ok := elem.Value.(string); ok {
@@ -349,6 +362,6 @@ func GetUsersFavouriteGenres(userId string) ([]string, error) {
 			}
 		}
 	}
-	
+
 	return genreNames, nil
 }
