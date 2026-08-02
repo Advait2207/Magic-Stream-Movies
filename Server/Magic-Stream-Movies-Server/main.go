@@ -1,10 +1,14 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"log"
 
+	"github.com/Advait2207/Magic-Stream-Movies/Server/Magic-Stream-Movies-Server/database"
 	"github.com/Advait2207/Magic-Stream-Movies/Server/Magic-Stream-Movies-Server/routes"
 	"github.com/gin-gonic/gin"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
 func main() {
@@ -14,8 +18,21 @@ func main() {
 		c.String(200, "Hello, MagicStreamMovies..!")
 	})
 
-	routes.SetupUnProtectedRoutes(router)
-	routes.SetupProtectedRoutes(router)
+	var client *mongo.Client = database.Connect()
+
+	if err := client.Ping(context.Background(), nil); err != nil {
+		log.Fatalf("Failed to reach server: %v", err)
+	}
+	
+	defer func() {
+		err := client.Disconnect(context.Background())
+		if err != nil {
+			log.Fatalf("Failed to disconnect from MongoDB: %v", err)
+		}
+	}()
+
+	routes.SetupUnProtectedRoutes(router,client)
+	routes.SetupProtectedRoutes(router,client)
 
 	if err := router.Run(":8080"); err != nil {
 		fmt.Println("Failed to start server", err)
