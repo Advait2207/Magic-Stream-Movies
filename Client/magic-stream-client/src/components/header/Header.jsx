@@ -8,7 +8,7 @@ import useAuth from '../../hook/useAuth'
 
 const Header = () => {
     const naviagte = useNavigate();
-    const {auth} = useState();
+    const {auth} = useAuth();
     return (
         <Navbar bg="dark" variant='dark' expand="lg" className="shadow-sm">
             <Container>

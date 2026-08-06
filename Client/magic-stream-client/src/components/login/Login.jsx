@@ -8,7 +8,7 @@ import useAuth from '../../hook/useAuth'
 
 const Login = () => {
     
-    const {setAuth} = useState();
+    const {setAuth} = useAuth();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
 
