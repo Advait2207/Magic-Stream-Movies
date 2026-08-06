@@ -4,10 +4,11 @@ import Button from 'react-bootstrap/Button';
 import Form from 'react-bootstrap/Form';
 import axiosClient from '../../api/axiosConfig';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
+import useAuth from '../../hook/useAuth'
 
 const Login = () => {
     
-    const [auth, setAuth] = useState('');
+    const {setAuth} = useState();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
 
@@ -34,7 +35,7 @@ const Login = () => {
             localStorage.setItem('user', JSON.stringify(response.data));
             // Handle successful login (e.g., store token, redirect)
           // navigate(from, {replace: true});
-           //navigate('/');
+           navigate('/');
 
         } catch (err) {
             console.error(err);
