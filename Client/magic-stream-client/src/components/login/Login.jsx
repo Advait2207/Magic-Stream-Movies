@@ -17,7 +17,8 @@ const Login = () => {
     const location = useLocation();
     const navigate = useNavigate();
 
-    
+    const from = location.state?.from?.pathname || "/";
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
@@ -34,8 +35,8 @@ const Login = () => {
             setAuth(response.data);
             localStorage.setItem('user', JSON.stringify(response.data));
             // Handle successful login (e.g., store token, redirect)
-          // navigate(from, {replace: true});
-           navigate('/');
+          navigate(from, {replace: true});
+           //navigate('/');
 
         } catch (err) {
             console.error(err);
