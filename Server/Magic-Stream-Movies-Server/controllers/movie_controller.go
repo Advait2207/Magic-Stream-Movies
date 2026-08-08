@@ -22,11 +22,7 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
-
-
-
 var validate = validator.New()
-
 
 func GetMovies(client *mongo.Client) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -230,7 +226,7 @@ func GetReviewRanking(admin_review string, client *mongo.Client, c *gin.Context)
 
 	base_prompt := strings.Replace(base_prompt_template, "{rankings}", sentimentDelimited, 1)
 
-	response, err := llm.Call(context.Background(), base_prompt+admin_review)
+	response, err := llm.Call(c, base_prompt+admin_review)
 
 	if err != nil {
 		return "", 0, err
@@ -385,7 +381,7 @@ func GetGenres(client *mongo.Client) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var ctx, cancel = context.WithTimeout(c, 100*time.Second)
 		defer cancel()
-		
+
 		var genres []models.Genre
 
 		var genreCollection *mongo.Collection = database.OpenCollection("genres", client)
@@ -393,7 +389,7 @@ func GetGenres(client *mongo.Client) gin.HandlerFunc {
 		cursor, err := genreCollection.Find(ctx, bson.M{})
 
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error":"Error fetching movie genres"})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error fetching movie genres"})
 			return
 		}
 
