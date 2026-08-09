@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/Advait2207/Magic-Stream-Movies/Server/Magic-Stream-Movies-Server/database"
@@ -20,6 +22,19 @@ func main() {
 		c.String(200, "Hello, MagicStreamMovies..!")
 	})
 
+	allowedOrigins := os.Getenv("ALLOWED_ORIGINS")
+	var origins []string
+	if allowedOrigins != "" {
+		origins = strings.Split(allowedOrigins, ",")
+		for i := range origins {
+			origins[i] = strings.TrimSpace(origins[i])
+			log.Println("Allowed Origin:", origins[i])
+		}
+	} else {
+		origins = []string{"http://localhost:5173"}
+		log.Println("Allowed Origin: http://localhost:5173")
+	}
+
 	var client *mongo.Client = database.Connect()
 
 	if err := client.Ping(context.Background(), nil); err != nil {
@@ -35,10 +50,11 @@ func main() {
 
 	config := cors.Config{}
 
-	config.AllowAllOrigins = true
-	config.AllowMethods = []string{"GET", "POST", "PATCH"}
+	config.AllowOrigins = origins
+	config.AllowMethods = []string{"GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"}
 	config.AllowHeaders = []string{"Origin", "Content-Type", "Authorization"}
 	config.ExposeHeaders = []string{"Content-Length"}
+	config.AllowCredentials = true
 	config.MaxAge = 12 * time.Hour
 
 	router.Use(cors.New(config))

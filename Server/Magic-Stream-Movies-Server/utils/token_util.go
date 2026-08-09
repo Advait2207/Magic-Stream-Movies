@@ -69,17 +69,17 @@ func GenerateAllTokens(email, firstName, lastName, role, userId string) (string,
 	return signedToken, signedRefreshToken, nil
 }
 
-func UpdateAllTokens(userID, token, refreshToken string, client *mongo.Client)(err error) {
+func UpdateAllTokens(userID, token, refreshToken string, client *mongo.Client) (err error) {
 	var ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
 	defer cancel()
 
 	updateAt, _ := time.Parse(time.RFC3339, time.Now().Format(time.RFC3339))
 
-	updateData := bson.M {
-		"$set": bson.M {
-			"token": token,
+	updateData := bson.M{
+		"$set": bson.M{
+			"token":         token,
 			"refresh_token": refreshToken,
-			"update_at" : updateAt,
+			"update_at":     updateAt,
 		},
 	}
 
@@ -93,17 +93,23 @@ func UpdateAllTokens(userID, token, refreshToken string, client *mongo.Client)(e
 	return nil
 }
 
-func GetAccessToken(c *gin.Context) (string,error) {
-	authHeader := c.Request.Header.Get("Authorization")
-	if authHeader == "" {
-		return "", errors.New("Authorization header is required")
-	}
-	tokenString := authHeader[len("Bearer "):]
+func GetAccessToken(c *gin.Context) (string, error) {
+	/*
+		authHeader := c.Request.Header.Get("Authorization")
+		if authHeader == "" {
+			return "", errors.New("Authorization header is required")
+		}
+		tokenString := authHeader[len("Bearer "):]
 
-	if tokenString == "" {
-		return "", errors.New("Bearer token is required")
-	}
+		if tokenString == "" {
+			return "", errors.New("Bearer token is required")
+		}
+	*/
 
+	tokenString, err := c.Cookie("access_token")
+	if err != nil {
+		return "", err
+	}
 	return tokenString, nil
 }
 
@@ -139,7 +145,7 @@ func GetUserIdFromContext(c *gin.Context) (string, error) {
 	id, ok := userId.(string)
 
 	if !ok {
-		return "", errors.New("unable to retrieve userId")		
+		return "", errors.New("unable to retrieve userId")
 	}
 
 	return id, nil
@@ -155,7 +161,7 @@ func GetRoleFromContext(c *gin.Context) (string, error) {
 	memberRole, ok := role.(string)
 
 	if !ok {
-		return "", errors.New("unable to retrieve role")		
+		return "", errors.New("unable to retrieve role")
 	}
 
 	return memberRole, nil
