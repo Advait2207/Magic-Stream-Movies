@@ -4,16 +4,19 @@ const AuthContext = createContext({});
 
 export const AuthProvider = ({ children }) => {
 
+    const [loading, setLoading] = useState(true);
     const [auth, setAuth] = useState(() => {
-        const storedUser = localStorage.getItem('user');
-
-        if (!storedUser) return null;
-
         try {
+            const storedUser = localStorage.getItem('user');
+
+            if (!storedUser) return null;
+       
             return JSON.parse(storedUser);
         } catch (error) {
             console.error('Failed to parse user from localStorage', error);
             return null;
+        } finally {
+            setLoading(false);
         }
     });
 
@@ -26,7 +29,7 @@ export const AuthProvider = ({ children }) => {
     }, [auth]);
 
     return (
-        <AuthContext.Provider value={{ auth, setAuth }}>
+        <AuthContext.Provider value={{ auth, setAuth, loading }}>
             {children}
         </AuthContext.Provider>
     );
