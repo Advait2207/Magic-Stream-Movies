@@ -1,0 +1,33 @@
+services:
+  web:
+    depends_on:
+      - api
+    image: magic-stream-web:1.0.0
+    container_name: magic-stream-web
+    ports:
+      - "5173:5173"
+
+    environment:
+      API_URL: "http://${API_HOST_IP}:8080"
+
+
+  api:
+    image: magic-stream-api:1.0.0
+    container_name: magic-stream-api
+    ports:
+      - "8080:8080"
+
+    environment:
+      PORT: "8080"
+      SECRET_KEY: "${SECRET_KEY}"
+      REFRESH_TOKEN_SECRET_KEY: "${REFRESH_TOKEN_SECRET_KEY}"
+      OPENAI_API_KEY: "${OPENAI_API_KEY}"
+      BASE_PROMPT_TEMPLATE: >
+        Return a response using one of these words: {rankings}. 
+        The response should be a single word and should not contain any other text. 
+        The response should be based on the following review.
+      RECOMMENDED_MOVIE_LIMIT: "5"
+      #MONGODB_URI: "mongodb://db:27017/"
+      MONGODB_URI: "mongodb://host.docker.internal:27017"
+      DATABASE_NAME: "magic-stream-movies"
+      ALLOWED_ORIGINS: "${ALLOWED_ORIGINS}"
